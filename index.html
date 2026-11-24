@@ -1607,7 +1607,7 @@ function defectsReportHTML(inP){
 /* ---------- Impresión ---------- */
 const LABEL_SIZES={"60x40":[60,40],"50x30":[50,30],"40x30":[40,30]};
 const FONT_SIZES={normal:[11,12],grande:[12.5,14],muy:[14,16]};
-function printCfg(){const s=db.settings||{};return Object.assign({ticket:"80",label:"60x40",lw:60,lh:40,font:"grande"},s.print||{});}
+function printCfg(){const s=db.settings||{};return Object.assign({ticket:"80",label:"60x40",lw:60,lh:40,font:"grande",labelOn:"rollo"},s.print||{});}
 function labelSize(){const c=printCfg();if(c.label==="custom")return [Math.max(20,+c.lw||60),Math.max(15,+c.lh||40)];return LABEL_SIZES[c.label]||[60,40];}
 function pageStyle(){let st=document.getElementById("pageSize");if(!st){st=document.createElement("style");st.id="pageSize";document.head.appendChild(st);}return st;}
 function doPrint(html,kind){
@@ -1616,14 +1616,14 @@ function doPrint(html,kind){
   if(kind==="label"){
     const [w,h]=labelSize(), k=Math.min(w/60,h/40);
     p.innerHTML=`<div class="labelpage" style="width:${w}mm;height:${h}mm"><div style="width:60mm;height:40mm;transform:scale(${k});transform-origin:0 0">${html}</div></div>`;
-    st.textContent=`@media print{@page{margin:0}#printArea{display:flex!important;justify-content:center;align-items:flex-start}#printArea .labelpage{margin:0}}`;
+    st.textContent=`@media print{@page{${c.labelOn==="etiquetas"?"":"size:portrait;"}margin:0}#printArea{display:flex!important;justify-content:center;align-items:flex-start}#printArea .labelpage{margin:0}}`;
   } else {
     const w=c.ticket==="58"?58:c.ticket==="80"?80:0;
     p.innerHTML=html;
     if(w){
       p.style.setProperty("--rw",(w-4)+"mm"); p.classList.add("thermal","measure");
       const hmm=Math.ceil(p.scrollHeight*25.4/96)+8; p.classList.remove("measure");
-      st.textContent=`@media print{@page{margin:0}html,body{width:${w}mm!important;height:auto!important;margin:0!important}#printArea{width:${w}mm}#printArea .receipt{margin:0;padding:2mm ${w===58?"1.5mm":"3mm"};font-size:${(FONT_SIZES[c.font]||FONT_SIZES.grande)[w===58?0:1]}px}}`;
+      st.textContent=`@media print{@page{size:portrait;margin:0}html,body{width:${w}mm!important;height:auto!important;margin:0!important}#printArea{width:${w}mm}#printArea .receipt{margin:0;padding:2mm ${w===58?"1.5mm":"3mm"};font-size:${(FONT_SIZES[c.font]||FONT_SIZES.grande)[w===58?0:1]}px}}`;
     } else st.textContent=`@media print{@page{size:letter;margin:12mm}}`;
   }
   setTimeout(()=>window.print(),150);
@@ -1637,17 +1637,19 @@ function printPanelHTML(){
     <h2>Tamaño de letra del ticket</h2><div class="seg" role="group" aria-label="Tamaño de letra" style="flex-wrap:wrap">${[["normal","Normal"],["grande","Grande"],["muy","Muy grande"]].map(([k,n])=>`<button data-pt-f="${k}" aria-pressed="${c.font===k}">${n}</button>`).join("")}</div>
     <p class="stockline">Se imprime con letra gruesa para que se lea bien en impresoras térmicas.</p>
     <h2>Etiqueta del equipo</h2><div class="seg" role="group" aria-label="Tamaño de etiqueta" style="flex-wrap:wrap">${[["60x40","60 × 40 mm"],["50x30","50 × 30 mm"],["40x30","40 × 30 mm"],["custom","Otro tamaño"]].map(([k,n])=>`<button data-pt-l="${k}" aria-pressed="${c.label===k}">${n}</button>`).join("")}</div>
+    <p class="stockline" style="margin:.9rem 0 .4rem">¿Dónde imprimes la etiqueta?</p><div class="seg" role="group" aria-label="Dónde imprimes la etiqueta" style="flex-wrap:wrap">${[["rollo","En el rollo de tickets"],["etiquetas","En impresora de etiquetas"]].map(([k,n])=>`<button data-pt-o="${k}" aria-pressed="${c.labelOn===k}">${n}</button>`).join("")}</div>
     <div class="row" id="pt-custom" style="margin-top:.7rem" ${c.label==="custom"?"":"hidden"}><label>Ancho (mm)<input class="field num" id="pt-lw" type="number" min="20" max="120" inputmode="numeric" value="${c.lw}" style="max-width:120px"></label><label>Alto (mm)<input class="field num" id="pt-lh" type="number" min="15" max="120" inputmode="numeric" value="${c.lh}" style="max-width:120px"></label></div>
     <h2>Sonidos</h2>${soundToggleHTML()}
     <div class="row" style="margin-top:1.2rem"><button class="btn" id="pt-test-t">Imprimir ticket de prueba</button><button class="btn" id="pt-test-l">Imprimir etiqueta de prueba</button><span class="spacer"></span><button class="btn primary" id="pt-save">Guardar</button></div></section>`;
 }
 function bindPrintPanel(){
   bindSoundToggle(app);
-  const c=printCfg(), sel={ticket:c.ticket,label:c.label,font:c.font};
+  const c=printCfg(), sel={ticket:c.ticket,label:c.label,font:c.font,labelOn:c.labelOn};
+  app.querySelectorAll("[data-pt-o]").forEach(b=>b.onclick=()=>{sel.labelOn=b.dataset.ptO;app.querySelectorAll("[data-pt-o]").forEach(x=>x.setAttribute("aria-pressed",x===b));});
   app.querySelectorAll("[data-pt-f]").forEach(b=>b.onclick=()=>{sel.font=b.dataset.ptF;app.querySelectorAll("[data-pt-f]").forEach(x=>x.setAttribute("aria-pressed",x===b));});
   app.querySelectorAll("[data-pt-w]").forEach(b=>b.onclick=()=>{sel.ticket=b.dataset.ptW;app.querySelectorAll("[data-pt-w]").forEach(x=>x.setAttribute("aria-pressed",x===b));});
   app.querySelectorAll("[data-pt-l]").forEach(b=>b.onclick=()=>{sel.label=b.dataset.ptL;app.querySelectorAll("[data-pt-l]").forEach(x=>x.setAttribute("aria-pressed",x===b));document.getElementById("pt-custom").hidden=sel.label!=="custom";});
-  const apply=()=>{db.settings.print={ticket:sel.ticket,label:sel.label,font:sel.font,lw:+document.getElementById("pt-lw").value||60,lh:+document.getElementById("pt-lh").value||40};};
+  const apply=()=>{db.settings.print={ticket:sel.ticket,label:sel.label,font:sel.font,labelOn:sel.labelOn,lw:+document.getElementById("pt-lw").value||60,lh:+document.getElementById("pt-lh").value||40};};
   document.getElementById("pt-save").onclick=()=>{apply();save();toast("Impresión guardada");};
   document.getElementById("pt-test-t").onclick=()=>{apply();doPrint(`<div class="receipt">${shopHead()}<hr><div class="big">Prueba</div><div class="c">${today()} ${nowTime()}</div><hr>Si lees esto completo y el papel se corta aquí abajo, el tamaño es correcto.<hr><div class="c">Fin del ticket</div></div>`);};
   document.getElementById("pt-test-l").onclick=()=>{apply();doPrint(labelHTML({folio:0,brand:"MARCA",model:"MODELO",name:"CLIENTE DE PRUEBA",phone:"726 000 0000",fault:"Etiqueta de prueba",lockType:"pin",lockValue:"1234"}),"label");};
